@@ -8,8 +8,9 @@ Work in progress. Currently implemented:
 
 - **Auth**: signup, login, logout, JWT access + refresh token flow with refresh token rotation and DB-backed revocation
 - **Books**: create, list, update, delete, combined filter + search, server-side pagination + sorting, reading progress validation, auto-finish on completion
+- **Shelves**: create, list, view with books, add/remove book, delete (many-to-many relationship)
 
-Not yet implemented: shelves, shelf sharing/roles, lending, activity log, WebSockets, dashboard.
+Not yet implemented: shelf sharing/roles, lending, activity log, WebSockets, dashboard.
 
 ## Stack
 
