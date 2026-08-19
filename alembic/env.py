@@ -14,6 +14,8 @@ from app.config import DATABASE_URL
 from app.models.user import User
 from app.models.refresh_token import RefreshToken
 from app.models.book import Book
+from app.models.shelf import Shelf
+from app.models.shelf_book import ShelfBook
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
