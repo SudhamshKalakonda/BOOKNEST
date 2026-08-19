@@ -14,7 +14,7 @@ router = APIRouter(prefix="/books", tags=["books"])
 
 
 @router.post("/", response_model=BookOut, status_code=status.HTTP_201_CREATED)
-def create_book(
+async def create_book(
     payload: BookCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -33,7 +33,7 @@ def create_book(
     db.commit()
     db.refresh(new_book)
 
-    log_activity(
+    await log_activity(
         db,
         actor_id=current_user.id,
         event_type="book_added",
@@ -89,7 +89,7 @@ def list_books(
 from datetime import datetime, timezone
 
 @router.put("/{book_id}", response_model=BookOut)
-def update_book(
+async def update_book(
     book_id: int,
     payload: BookUpdate,
     current_user: User = Depends(get_current_user),
@@ -141,7 +141,7 @@ def update_book(
     db.refresh(book)
 
     if book.status != old_status:
-        log_activity(
+        await log_activity(
             db,
             actor_id=current_user.id,
             event_type="status_changed",

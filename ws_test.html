@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head><title>WebSocket Test</title></head>
+<body>
+  <h2>BookNest WebSocket Test</h2>
+  <p>Paste your access token below and click Connect.</p>
+  <input type="text" id="token" placeholder="access token" style="width: 500px;">
+  <button onclick="connect()">Connect</button>
+  <div id="status">Not connected</div>
+  <pre id="log"></pre>
+
+  <script>
+    let ws;
+    function connect() {
+      const token = document.getElementById('token').value;
+      ws = new WebSocket(`ws://127.0.0.1:8000/ws?token=${token}`);
+
+      ws.onopen = () => {
+        document.getElementById('status').innerText = 'Connected';
+        log('Connection opened');
+      };
+      ws.onmessage = (event) => {
+        log('Message received: ' + event.data);
+      };
+      ws.onclose = (event) => {
+        document.getElementById('status').innerText = 'Disconnected (code: ' + event.code + ')';
+        log('Connection closed, code: ' + event.code);
+      };
+      ws.onerror = (error) => {
+        log('Error occurred');
+      };
+    }
+
+    function log(msg) {
+      document.getElementById('log').innerText += msg + '\n';
+    }
+  </script>
+</body>
+</html>

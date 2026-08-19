@@ -18,8 +18,16 @@ from app.schemas.shelf_share import (
 from app.auth.dependencies import get_current_user
 from app.auth.shelf_permissions import get_shelf_role
 from app.services.activity import log_activity
+from app.services.connection_manager import manager
 
 router = APIRouter(prefix="/shelves", tags=["shelves"])
+
+
+def get_shelf_collaborator_ids(db: Session, shelf: Shelf, exclude_user_id: int) -> list[int]:
+    collaborator_ids = [shelf.owner_id]
+    shares = db.query(ShelfShare).filter(ShelfShare.shelf_id == shelf.id).all()
+    collaborator_ids.extend([s.user_id for s in shares])
+    return [uid for uid in set(collaborator_ids) if uid != exclude_user_id]
 
 
 @router.post("/", response_model=ShelfOut, status_code=status.HTTP_201_CREATED)
@@ -89,7 +97,7 @@ def get_shelf(
 
 
 @router.post("/{shelf_id}/books/{book_id}", status_code=status.HTTP_201_CREATED)
-def add_book_to_shelf(
+async def add_book_to_shelf(
     shelf_id: int,
     book_id: int,
     current_user: User = Depends(get_current_user),
@@ -121,11 +129,20 @@ def add_book_to_shelf(
     db.add(shelf_book)
     db.commit()
 
+    collaborator_ids = get_shelf_collaborator_ids(db, shelf, current_user.id)
+    await manager.send_to_users(collaborator_ids, {
+        "type": "shelf_book_added",
+        "shelf_id": shelf.id,
+        "book_id": book.id,
+        "title": book.title,
+        "added_by": current_user.name,
+    })
+
     return {"message": "Book added to shelf"}
 
 
 @router.delete("/{shelf_id}/books/{book_id}", status_code=status.HTTP_204_NO_CONTENT)
-def remove_book_from_shelf(
+async def remove_book_from_shelf(
     shelf_id: int,
     book_id: int,
     current_user: User = Depends(get_current_user),
@@ -149,6 +166,14 @@ def remove_book_from_shelf(
 
     db.delete(shelf_book)
     db.commit()
+
+    collaborator_ids = get_shelf_collaborator_ids(db, shelf, current_user.id)
+    await manager.send_to_users(collaborator_ids, {
+        "type": "shelf_book_removed",
+        "shelf_id": shelf.id,
+        "book_id": book_id,
+        "removed_by": current_user.name,
+    })
 
     return None
 
@@ -175,7 +200,7 @@ def delete_shelf(
 
 
 @router.post("/{shelf_id}/share", response_model=ShelfShareOut, status_code=status.HTTP_201_CREATED)
-def share_shelf(
+async def share_shelf(
     shelf_id: int,
     payload: ShelfShareCreate,
     current_user: User = Depends(get_current_user),
@@ -207,7 +232,7 @@ def share_shelf(
     db.commit()
     db.refresh(new_share)
 
-    log_activity(
+    await log_activity(
         db,
         actor_id=current_user.id,
         event_type="shelf_shared",
@@ -219,7 +244,7 @@ def share_shelf(
 
 
 @router.put("/{shelf_id}/share/{user_id}", response_model=ShelfShareOut)
-def update_collaborator_role(
+async def update_collaborator_role(
     shelf_id: int,
     user_id: int,
     payload: ShelfShareRoleUpdate,
@@ -245,7 +270,7 @@ def update_collaborator_role(
     db.refresh(share)
 
     target_user = db.query(User).filter(User.id == user_id).first()
-    log_activity(
+    await log_activity(
         db,
         actor_id=current_user.id,
         event_type="role_changed",
@@ -257,7 +282,7 @@ def update_collaborator_role(
 
 
 @router.delete("/{shelf_id}/share/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def remove_collaborator(
+async def remove_collaborator(
     shelf_id: int,
     user_id: int,
     current_user: User = Depends(get_current_user),
@@ -283,7 +308,7 @@ def remove_collaborator(
     db.delete(share)
     db.commit()
 
-    log_activity(
+    await log_activity(
         db,
         actor_id=current_user.id,
         event_type="collaborator_removed",
