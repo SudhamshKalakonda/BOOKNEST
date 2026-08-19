@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from sqlalchemy import text
 from app.database import engine
-from app.routers import auth, books, shelves, lending
+from app.routers import auth, books, shelves, lending, activity
 
 app = FastAPI()
 
@@ -9,6 +9,7 @@ app.include_router(auth.router)
 app.include_router(books.router)
 app.include_router(shelves.router)
 app.include_router(lending.router)
+app.include_router(activity.router)
 
 @app.get("/health")
 def health_check():

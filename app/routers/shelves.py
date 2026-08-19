@@ -17,6 +17,7 @@ from app.schemas.shelf_share import (
 )
 from app.auth.dependencies import get_current_user
 from app.auth.shelf_permissions import get_shelf_role
+from app.services.activity import log_activity
 
 router = APIRouter(prefix="/shelves", tags=["shelves"])
 
@@ -206,6 +207,14 @@ def share_shelf(
     db.commit()
     db.refresh(new_share)
 
+    log_activity(
+        db,
+        actor_id=current_user.id,
+        event_type="shelf_shared",
+        message=f"{current_user.name} shared \"{shelf.name}\" with {target_user.name} as {new_share.role}",
+        shelf_id=shelf.id,
+    )
+
     return new_share
 
 
@@ -235,6 +244,15 @@ def update_collaborator_role(
     db.commit()
     db.refresh(share)
 
+    target_user = db.query(User).filter(User.id == user_id).first()
+    log_activity(
+        db,
+        actor_id=current_user.id,
+        event_type="role_changed",
+        message=f"{current_user.name} changed {target_user.name}'s role on \"{shelf.name}\" to {share.role}",
+        shelf_id=shelf.id,
+    )
+
     return share
 
 
@@ -259,7 +277,18 @@ def remove_collaborator(
     if not share:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This user does not have access to this shelf")
 
+    target_user = db.query(User).filter(User.id == user_id).first()
+    target_name = target_user.name if target_user else "a user"
+
     db.delete(share)
     db.commit()
+
+    log_activity(
+        db,
+        actor_id=current_user.id,
+        event_type="collaborator_removed",
+        message=f"{current_user.name} removed {target_name} from \"{shelf.name}\"",
+        shelf_id=shelf.id,
+    )
 
     return None

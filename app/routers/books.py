@@ -7,6 +7,7 @@ from app.models.book import Book
 from app.models.user import User
 from app.auth.dependencies import get_current_user
 from app.schemas.book import BookCreate, BookUpdate, BookOut
+from app.services.activity import log_activity
 from typing import Optional
 from sqlalchemy import or_
 router = APIRouter(prefix="/books", tags=["books"])
@@ -31,6 +32,14 @@ def create_book(
     db.add(new_book)
     db.commit()
     db.refresh(new_book)
+
+    log_activity(
+        db,
+        actor_id=current_user.id,
+        event_type="book_added",
+        message=f"{current_user.name} added \"{new_book.title}\"",
+        book_id=new_book.id,
+    )
 
     return new_book
 
@@ -94,6 +103,7 @@ def update_book(
     if book.owner_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your book")
 
+    old_status = book.status
     update_data = payload.model_dump(exclude_unset=True)
 
     if "current_page" in update_data:
@@ -129,6 +139,15 @@ def update_book(
 
     db.commit()
     db.refresh(book)
+
+    if book.status != old_status:
+        log_activity(
+            db,
+            actor_id=current_user.id,
+            event_type="status_changed",
+            message=f"{current_user.name} changed \"{book.title}\" status to {book.status}",
+            book_id=book.id,
+        )
 
     return book
 

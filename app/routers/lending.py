@@ -8,6 +8,7 @@ from app.models.user import User
 from app.schemas.lending import LendBookRequest, BorrowedBookOut
 from app.schemas.book import BookOut
 from app.auth.dependencies import get_current_user
+from app.services.activity import log_activity
 
 router = APIRouter(prefix="/lending", tags=["lending"])
 
@@ -41,6 +42,14 @@ def lend_book(
     db.commit()
     db.refresh(book)
 
+    log_activity(
+        db,
+        actor_id=current_user.id,
+        event_type="book_lent",
+        message=f"{current_user.name} lent \"{book.title}\" to {borrower.name}",
+        book_id=book.id,
+    )
+
     return book
 
 
@@ -61,9 +70,18 @@ def return_book(
     if book.lent_to_id is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This book is not currently lent to anyone")
 
+    borrower_id = book.lent_to_id
     book.lent_to_id = None
     db.commit()
     db.refresh(book)
+
+    log_activity(
+        db,
+        actor_id=current_user.id,
+        event_type="book_returned",
+        message=f"{current_user.name} marked \"{book.title}\" as returned",
+        book_id=book.id,
+    )
 
     return book
 

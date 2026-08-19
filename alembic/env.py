@@ -9,6 +9,7 @@ from sqlalchemy import pool
 
 from alembic import context
 from app.models.shelf_share import ShelfShare
+from app.models.activity_log import ActivityLog
 from app.database import Base
 from app.config import DATABASE_URL
 from app.models.user import User
