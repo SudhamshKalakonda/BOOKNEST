@@ -8,7 +8,7 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from alembic import context
-
+from app.models.shelf_share import ShelfShare
 from app.database import Base
 from app.config import DATABASE_URL
 from app.models.user import User
