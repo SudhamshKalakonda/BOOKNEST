@@ -67,20 +67,20 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-ink/60 font-mono text-sm">Loading your dashboard...</p>
+      <div className="min-h-screen flex items-center justify-center bg-cream">
+        <p className="text-ink/50 text-sm font-medium">Loading your dashboard...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-cream">
         <div className="text-center">
-          <p className="text-rust mb-2">{error}</p>
+          <p className="text-coral mb-2 font-medium">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="text-sm text-forest underline"
+            className="text-sm text-charcoal underline"
           >
             Try again
           </button>
@@ -92,95 +92,91 @@ export default function DashboardPage() {
   if (!data) return null;
 
   const statusEntries = Object.entries(data.status_counts);
+  const statCards = [
+    ...statusEntries.map(([status, count]) => ({
+      label: status.replace(/_/g, " "),
+      value: count,
+    })),
+    { label: "finished this year", value: data.finished_this_year },
+    { label: "average rating", value: data.average_rating ?? "—" },
+    { label: "lent out", value: data.books_lent_out },
+    { label: "shared with me", value: data.shelves_shared_with_me },
+  ];
 
   return (
-    <div className="min-h-screen px-6 py-8 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-2">
-          <div className="flex gap-[2px]">
-            <div className="w-[5px] h-6 rounded-sm bg-brass" />
-            <div className="w-[5px] h-5 rounded-sm bg-rust mt-1" />
-            <div className="w-[5px] h-6 rounded-sm bg-forest" />
+    <div className="min-h-screen bg-cream relative overflow-hidden">
+      <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-coral/10 pointer-events-none" />
+      <div className="absolute top-40 -right-10 w-24 h-24 rounded-full border border-coral/30 pointer-events-none" />
+
+      <div className="relative z-10 px-6 py-8 max-w-5xl mx-auto">
+        <div className="flex items-center justify-between mb-10">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-coral flex items-center justify-center">
+              <span className="font-display font-bold text-off-white text-sm">B</span>
+            </div>
+            <span className="font-display font-bold text-xl text-ink">BookNest</span>
           </div>
-          <span className="font-display font-semibold text-xl text-ink">BookNest</span>
+          <button
+            onClick={handleLogout}
+            className="text-sm font-medium text-ink/60 hover:text-ink border border-line rounded-full px-4 py-2 transition-colors"
+          >
+            Log out
+          </button>
         </div>
-        <button
-          onClick={handleLogout}
-          className="text-sm text-ink/60 hover:text-ink border border-line rounded-md px-3 py-1.5"
-        >
-          Log out
-        </button>
-      </div>
 
-      <h1 className="font-display font-semibold text-3xl text-ink mb-1">Dashboard</h1>
-      <p className="text-ink/60 text-sm mb-8">Your reading, at a glance.</p>
+        <h1 className="font-display font-bold text-4xl text-ink mb-1">Dashboard</h1>
+        <p className="text-ink/50 text-sm mb-8">Your reading, at a glance.</p>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
-        {statusEntries.map(([status, count]) => (
-          <div key={status} className="bg-card border border-line rounded-lg p-4 relative overflow-hidden">
-            <div className="absolute left-0 top-0 bottom-0 w-1 bg-brass" />
-            <div className="font-display font-semibold text-2xl text-ink">{count}</div>
-            <div className="text-xs uppercase tracking-wide text-ink/50 mt-1">
-              {status.replace(/_/g, " ")}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+          {statCards.map((stat, i) => (
+            <div
+              key={stat.label}
+              className={`rounded-2xl p-5 relative overflow-hidden ${
+                i === 0 ? "dot-texture bg-charcoal" : "bg-charcoal"
+              }`}
+            >
+              <div className="font-display font-bold text-4xl text-off-white">{stat.value}</div>
+              <div className="text-xs uppercase tracking-wider text-off-white/50 mt-2">
+                {stat.label}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {data.shelf_with_most_books && (
+          <div className="bg-off-white border-2 border-charcoal rounded-2xl p-5 mb-8 flex items-center justify-between">
+            <div>
+              <span className="text-xs uppercase tracking-wider text-ink/50">Top shelf</span>
+              <div className="font-display font-bold text-xl text-ink mt-1">
+                {data.shelf_with_most_books.name}
+              </div>
+            </div>
+            <div className="font-display font-bold text-3xl text-coral">
+              {data.shelf_with_most_books.book_count}
             </div>
           </div>
-        ))}
-
-        <div className="bg-card border border-line rounded-lg p-4 relative overflow-hidden">
-          <div className="absolute left-0 top-0 bottom-0 w-1 bg-brass" />
-          <div className="font-display font-semibold text-2xl text-ink">{data.finished_this_year}</div>
-          <div className="text-xs uppercase tracking-wide text-ink/50 mt-1">Finished this year</div>
-        </div>
-
-        <div className="bg-card border border-line rounded-lg p-4 relative overflow-hidden">
-          <div className="absolute left-0 top-0 bottom-0 w-1 bg-brass" />
-          <div className="font-display font-semibold text-2xl text-ink">
-            {data.average_rating ?? "—"}
-          </div>
-          <div className="text-xs uppercase tracking-wide text-ink/50 mt-1">Average rating</div>
-        </div>
-
-        <div className="bg-card border border-line rounded-lg p-4 relative overflow-hidden">
-          <div className="absolute left-0 top-0 bottom-0 w-1 bg-brass" />
-          <div className="font-display font-semibold text-2xl text-ink">{data.books_lent_out}</div>
-          <div className="text-xs uppercase tracking-wide text-ink/50 mt-1">Lent out</div>
-        </div>
-
-        <div className="bg-card border border-line rounded-lg p-4 relative overflow-hidden">
-          <div className="absolute left-0 top-0 bottom-0 w-1 bg-brass" />
-          <div className="font-display font-semibold text-2xl text-ink">{data.shelves_shared_with_me}</div>
-          <div className="text-xs uppercase tracking-wide text-ink/50 mt-1">Shared with me</div>
-        </div>
-      </div>
-
-      {data.shelf_with_most_books && (
-        <div className="bg-card border border-line rounded-lg p-4 mb-8">
-          <span className="text-xs uppercase tracking-wide text-ink/50">Top shelf</span>
-          <div className="font-display font-semibold text-lg text-ink mt-1">
-            {data.shelf_with_most_books.name}
-            <span className="text-ink/50 text-sm font-body font-normal ml-2">
-              {data.shelf_with_most_books.book_count} books
-            </span>
-          </div>
-        </div>
-      )}
-
-      <div className="bg-card border border-line rounded-lg p-5">
-        <h2 className="font-display font-semibold text-lg text-ink mb-3">Activity</h2>
-        {data.recent_activity.length === 0 ? (
-          <p className="text-sm text-ink/50">No activity yet. Add a book to get started.</p>
-        ) : (
-          <div className="flex flex-col">
-            {data.recent_activity.map((item) => (
-              <div key={item.id} className="py-2.5 border-b border-dashed border-line last:border-none">
-                <p className="text-sm text-ink">{item.message}</p>
-                <span className="text-[10px] font-mono text-ink/40 uppercase">
-                  {new Date(item.created_at).toLocaleString()}
-                </span>
-              </div>
-            ))}
-          </div>
         )}
+
+        <div className="bg-off-white border-2 border-charcoal rounded-2xl p-6">
+          <h2 className="font-display font-bold text-xl text-ink mb-4">Activity</h2>
+          {data.recent_activity.length === 0 ? (
+            <p className="text-sm text-ink/50">No activity yet. Add a book to get started.</p>
+          ) : (
+            <div className="flex flex-col">
+              {data.recent_activity.map((item) => (
+                <div key={item.id} className="py-3 border-b border-line last:border-none flex items-start gap-3">
+                  <div className="w-1.5 h-1.5 rounded-full bg-coral mt-2 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm text-ink">{item.message}</p>
+                    <span className="text-[11px] font-medium text-ink/40 uppercase tracking-wide">
+                      {new Date(item.created_at).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
