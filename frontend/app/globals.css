@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+:root {
+  --paper: #F2E9D4;
+  --paper-dim: #E8DBBB;
+  --card: #FBF6E9;
+  --ink: #2B2620;
+  --forest: #1F3D2B;
+  --forest-dark: #16301F;
+  --brass: #AD8A4F;
+  --brass-light: #D7BD86;
+  --rust: #A13D2B;
+  --line: rgba(43, 38, 32, 0.16);
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-dim: var(--paper-dim);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-forest: var(--forest);
+  --color-forest-dark: var(--forest-dark);
+  --color-brass: var(--brass);
+  --color-brass-light: var(--brass-light);
+  --color-rust: var(--rust);
+  --color-line: var(--line);
+  --font-display: var(--font-fraunces);
+  --font-body: var(--font-plex-sans);
+  --font-mono: var(--font-plex-mono);
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body), sans-serif;
+  background-image: radial-gradient(circle at 1px 1px, rgba(43, 38, 32, 0.05) 1px, transparent 0);
+  background-size: 22px 22px;
+}
