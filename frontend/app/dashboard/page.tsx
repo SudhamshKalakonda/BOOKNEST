@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authFetch } from "@/lib/authFetch";
+import Nav from "@/components/Nav";
 
 type ActivityItem = {
   id: number;
@@ -109,20 +110,7 @@ export default function DashboardPage() {
       <div className="absolute top-40 -right-10 w-24 h-24 rounded-full border border-coral/30 pointer-events-none" />
 
       <div className="relative z-10 px-6 py-8 max-w-5xl mx-auto">
-        <div className="flex items-center justify-between mb-10">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-coral flex items-center justify-center">
-              <span className="font-display font-bold text-off-white text-sm">B</span>
-            </div>
-            <span className="font-display font-bold text-xl text-ink">BookNest</span>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="text-sm font-medium text-ink/60 hover:text-ink border border-line rounded-full px-4 py-2 transition-colors"
-          >
-            Log out
-          </button>
-        </div>
+        <Nav />
 
         <h1 className="font-display font-bold text-4xl text-ink mb-1">Dashboard</h1>
         <p className="text-ink/50 text-sm mb-8">Your reading, at a glance.</p>
