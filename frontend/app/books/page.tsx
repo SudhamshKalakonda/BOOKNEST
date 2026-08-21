@@ -22,11 +22,20 @@ const STATUS_LABELS: Record<string, string> = {
   finished: "Finished",
 };
 
+const STATUS_OPTIONS = ["want_to_read", "reading", "finished"];
+const PAGE_SIZE = 6;
+
 export default function BooksPage() {
   const router = useRouter();
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const [statusFilter, setStatusFilter] = useState("");
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState("created_at");
+  const [sortOrder, setSortOrder] = useState("desc");
+  const [page, setPage] = useState(1);
 
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState("");
@@ -35,11 +44,28 @@ export default function BooksPage() {
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editStatus, setEditStatus] = useState("");
+  const [editCurrentPage, setEditCurrentPage] = useState("");
+  const [editRating, setEditRating] = useState("");
+  const [editError, setEditError] = useState("");
+  const [editSubmitting, setEditSubmitting] = useState(false);
+
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
   const loadBooks = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const res = await authFetch("/books/");
+      const params = new URLSearchParams();
+      if (statusFilter) params.set("status_filter", statusFilter);
+      if (search) params.set("search", search);
+      params.set("sort_by", sortBy);
+      params.set("sort_order", sortOrder);
+      params.set("page", String(page));
+      params.set("page_size", String(PAGE_SIZE));
+
+      const res = await authFetch(`/books/?${params.toString()}`);
       if (!res.ok) {
         setError("Could not load your books.");
         setLoading(false);
@@ -52,7 +78,7 @@ export default function BooksPage() {
       setError("Could not reach the server.");
       setLoading(false);
     }
-  }, []);
+  }, [statusFilter, search, sortBy, sortOrder, page]);
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
@@ -91,10 +117,66 @@ export default function BooksPage() {
       setTotalPages("");
       setShowForm(false);
       setSubmitting(false);
+      setPage(1);
       loadBooks();
     } catch {
       setFormError("Could not reach the server.");
       setSubmitting(false);
+    }
+  }
+
+  function startEdit(book: Book) {
+    setEditingId(book.id);
+    setEditStatus(book.status);
+    setEditCurrentPage(book.current_page != null ? String(book.current_page) : "");
+    setEditRating(book.rating != null ? String(book.rating) : "");
+    setEditError("");
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditError("");
+  }
+
+  async function handleSaveEdit(bookId: number) {
+    setEditError("");
+    setEditSubmitting(true);
+
+    const payload: Record<string, unknown> = { status: editStatus };
+    payload.current_page = editCurrentPage ? parseInt(editCurrentPage) : null;
+    payload.rating = editRating ? parseInt(editRating) : null;
+
+    try {
+      const res = await authFetch(`/books/${bookId}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        setEditError(typeof data.detail === "string" ? data.detail : "Could not update book.");
+        setEditSubmitting(false);
+        return;
+      }
+
+      setEditingId(null);
+      setEditSubmitting(false);
+      loadBooks();
+    } catch {
+      setEditError("Could not reach the server.");
+      setEditSubmitting(false);
+    }
+  }
+
+  async function handleDelete(bookId: number) {
+    setDeletingId(bookId);
+    try {
+      const res = await authFetch(`/books/${bookId}`, { method: "DELETE" });
+      if (res.ok) {
+        loadBooks();
+      }
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -105,7 +187,7 @@ export default function BooksPage() {
       <div className="relative z-10 px-6 py-8 max-w-5xl mx-auto">
         <Nav />
 
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
           <div>
             <h1 className="font-display font-bold text-4xl text-ink mb-1">My Books</h1>
             <p className="text-ink/50 text-sm">Everything you&apos;re reading, and everything you plan to.</p>
@@ -174,6 +256,52 @@ export default function BooksPage() {
           </form>
         )}
 
+        <div className="flex flex-wrap items-center gap-3 mb-6">
+          <input
+            type="text"
+            placeholder="Search title or author..."
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            className="px-4 py-2 rounded-full border-2 border-charcoal bg-off-white text-sm outline-none focus:ring-2 focus:ring-coral min-w-[220px]"
+          />
+
+          <select
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPage(1);
+            }}
+            className="px-4 py-2 rounded-full border-2 border-charcoal bg-off-white text-sm outline-none"
+          >
+            <option value="">All statuses</option>
+            {STATUS_OPTIONS.map((s) => (
+              <option key={s} value={s}>
+                {STATUS_LABELS[s]}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="px-4 py-2 rounded-full border-2 border-charcoal bg-off-white text-sm outline-none"
+          >
+            <option value="created_at">Date added</option>
+            <option value="title">Title</option>
+            <option value="rating">Rating</option>
+          </select>
+
+          <button
+            onClick={() => setSortOrder((o) => (o === "asc" ? "desc" : "asc"))}
+            className="px-4 py-2 rounded-full border-2 border-charcoal bg-off-white text-sm"
+          >
+            {sortOrder === "asc" ? "↑ Asc" : "↓ Desc"}
+          </button>
+        </div>
+
         {loading && <p className="text-ink/50 text-sm">Loading your books...</p>}
 
         {error && (
@@ -187,45 +315,162 @@ export default function BooksPage() {
 
         {!loading && !error && books.length === 0 && (
           <div className="text-center py-16">
-            <p className="text-ink/50">No books yet. Add your first one to get started.</p>
+            <p className="text-ink/50">No books match your filters.</p>
           </div>
         )}
 
         {!loading && !error && books.length > 0 && (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             {books.map((book) => (
               <div
                 key={book.id}
-                className="bg-off-white border-2 border-charcoal rounded-2xl p-5"
+                className="bg-off-white border-2 border-charcoal rounded-2xl p-5 flex flex-col"
               >
-                <span className="inline-block text-[11px] font-semibold uppercase tracking-wider text-coral bg-coral/10 rounded-full px-2.5 py-1 mb-3">
-                  {STATUS_LABELS[book.status] || book.status}
-                </span>
-                <h3 className="font-display font-bold text-lg text-ink leading-tight">{book.title}</h3>
-                <p className="text-sm text-ink/50 mb-3">{book.author}</p>
-                {book.total_pages && (
-                  <div className="w-full h-1.5 bg-line rounded-full overflow-hidden mb-1">
-                    <div
-                      className="h-full bg-coral rounded-full"
-                      style={{
-                        width: `${Math.min(
-                          100,
-                          ((book.current_page || 0) / book.total_pages) * 100
-                        )}%`,
-                      }}
-                    />
+                {editingId === book.id ? (
+                  <div className="flex flex-col gap-3">
+                    <h3 className="font-display font-bold text-base text-ink leading-tight">
+                      {book.title}
+                    </h3>
+
+                    <div>
+                      <label className="block text-[11px] font-medium uppercase tracking-wider text-ink/50 mb-1">
+                        Status
+                      </label>
+                      <select
+                        value={editStatus}
+                        onChange={(e) => setEditStatus(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border-2 border-charcoal bg-cream text-sm outline-none"
+                      >
+                        {STATUS_OPTIONS.map((s) => (
+                          <option key={s} value={s}>
+                            {STATUS_LABELS[s]}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {book.total_pages && (
+                      <div>
+                        <label className="block text-[11px] font-medium uppercase tracking-wider text-ink/50 mb-1">
+                          Current page (of {book.total_pages})
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={editCurrentPage}
+                          onChange={(e) => setEditCurrentPage(e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border-2 border-charcoal bg-cream text-sm outline-none"
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-[11px] font-medium uppercase tracking-wider text-ink/50 mb-1">
+                        Rating (1-5)
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="5"
+                        value={editRating}
+                        onChange={(e) => setEditRating(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border-2 border-charcoal bg-cream text-sm outline-none"
+                      />
+                    </div>
+
+                    {editError && (
+                      <div className="text-xs text-coral bg-coral/10 border border-coral/30 rounded-lg px-3 py-2">
+                        {editError}
+                      </div>
+                    )}
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleSaveEdit(book.id)}
+                        disabled={editSubmitting}
+                        className="flex-1 bg-coral text-off-white font-semibold text-xs py-2 rounded-full disabled:opacity-60"
+                      >
+                        {editSubmitting ? "Saving..." : "Save"}
+                      </button>
+                      <button
+                        onClick={cancelEdit}
+                        className="flex-1 border-2 border-charcoal text-ink font-semibold text-xs py-2 rounded-full"
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   </div>
-                )}
-                {book.total_pages && (
-                  <p className="text-xs text-ink/40">
-                    {book.current_page || 0} / {book.total_pages} pages
-                  </p>
-                )}
-                {book.rating && (
-                  <p className="text-coral text-sm mt-2">{"★".repeat(book.rating)}</p>
+                ) : (
+                  <>
+                    <div className="flex items-start justify-between mb-3">
+                      <span className="inline-block text-[11px] font-semibold uppercase tracking-wider text-coral bg-coral/10 rounded-full px-2.5 py-1">
+                        {STATUS_LABELS[book.status] || book.status}
+                      </span>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => startEdit(book)}
+                          className="text-xs text-ink/40 hover:text-ink w-6 h-6 flex items-center justify-center rounded-full hover:bg-charcoal/5"
+                          title="Edit"
+                        >
+                          ✎
+                        </button>
+                        <button
+                          onClick={() => handleDelete(book.id)}
+                          disabled={deletingId === book.id}
+                          className="text-xs text-ink/40 hover:text-coral w-6 h-6 flex items-center justify-center rounded-full hover:bg-coral/5 disabled:opacity-40"
+                          title="Delete"
+                        >
+                          {deletingId === book.id ? "..." : "✕"}
+                        </button>
+                      </div>
+                    </div>
+                    <h3 className="font-display font-bold text-lg text-ink leading-tight">{book.title}</h3>
+                    <p className="text-sm text-ink/50 mb-3">{book.author}</p>
+                    {book.total_pages && (
+                      <div className="w-full h-1.5 bg-line rounded-full overflow-hidden mb-1">
+                        <div
+                          className="h-full bg-coral rounded-full"
+                          style={{
+                            width: `${Math.min(
+                              100,
+                              ((book.current_page || 0) / book.total_pages) * 100
+                            )}%`,
+                          }}
+                        />
+                      </div>
+                    )}
+                    {book.total_pages && (
+                      <p className="text-xs text-ink/40">
+                        {book.current_page || 0} / {book.total_pages} pages
+                      </p>
+                    )}
+                    {book.rating && (
+                      <p className="text-coral text-sm mt-2">{"★".repeat(book.rating)}</p>
+                    )}
+                  </>
                 )}
               </div>
             ))}
+          </div>
+        )}
+
+        {!loading && !error && books.length > 0 && (
+          <div className="flex items-center justify-center gap-3">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-4 py-2 rounded-full border-2 border-charcoal text-sm disabled:opacity-30"
+            >
+              &larr; Prev
+            </button>
+            <span className="text-sm text-ink/50">Page {page}</span>
+            <button
+              onClick={() => setPage((p) => (books.length < PAGE_SIZE ? p : p + 1))}
+              disabled={books.length < PAGE_SIZE}
+              className="px-4 py-2 rounded-full border-2 border-charcoal text-sm disabled:opacity-30"
+            >
+              Next &rarr;
+            </button>
           </div>
         )}
       </div>

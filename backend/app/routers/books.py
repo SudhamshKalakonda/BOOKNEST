@@ -181,6 +181,12 @@ def delete_book(
     if book.owner_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your book")
 
+    from app.models.shelf_book import ShelfBook
+    from app.models.activity_log import ActivityLog
+
+    db.query(ShelfBook).filter(ShelfBook.book_id == book_id).delete()
+    db.query(ActivityLog).filter(ActivityLog.book_id == book_id).update({"book_id": None})
+
     db.delete(book)
     db.commit()
 
