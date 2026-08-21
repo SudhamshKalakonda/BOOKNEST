@@ -14,6 +14,7 @@ type Book = {
   current_page: number | null;
   rating: number | null;
   notes: string | null;
+  lent_to_id: number | null;
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -52,6 +53,11 @@ export default function BooksPage() {
   const [editSubmitting, setEditSubmitting] = useState(false);
 
   const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const [lendingId, setLendingId] = useState<number | null>(null);
+  const [lendEmail, setLendEmail] = useState("");
+  const [lendError, setLendError] = useState("");
+  const [lendSubmitting, setLendSubmitting] = useState(false);
 
   const loadBooks = useCallback(async () => {
     setLoading(true);
@@ -177,6 +183,35 @@ export default function BooksPage() {
       }
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  function startLend(bookId: number) {
+    setLendingId(bookId);
+    setLendEmail("");
+    setLendError("");
+  }
+
+  async function handleLendSubmit(bookId: number) {
+    setLendError("");
+    setLendSubmitting(true);
+    try {
+      const res = await authFetch(`/lending/${bookId}/lend`, {
+        method: "POST",
+        body: JSON.stringify({ borrower_email: lendEmail }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setLendError(typeof data.detail === "string" ? data.detail : "Could not lend book.");
+        setLendSubmitting(false);
+        return;
+      }
+      setLendingId(null);
+      setLendSubmitting(false);
+      loadBooks();
+    } catch {
+      setLendError("Could not reach the server.");
+      setLendSubmitting(false);
     }
   }
 
@@ -446,6 +481,49 @@ export default function BooksPage() {
                     )}
                     {book.rating && (
                       <p className="text-coral text-sm mt-2">{"★".repeat(book.rating)}</p>
+                    )}
+
+                    {book.lent_to_id ? (
+                      <span className="inline-block mt-3 text-[11px] font-semibold uppercase tracking-wider text-coral bg-coral/10 rounded-full px-2.5 py-1 self-start">
+                        Lent out
+                      </span>
+                    ) : lendingId === book.id ? (
+                      <div className="mt-3 flex flex-col gap-2">
+                        <input
+                          type="email"
+                          placeholder="borrower@example.com"
+                          value={lendEmail}
+                          onChange={(e) => setLendEmail(e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border-2 border-charcoal bg-cream text-xs outline-none"
+                        />
+                        {lendError && (
+                          <div className="text-[11px] text-coral bg-coral/10 border border-coral/30 rounded-lg px-2 py-1.5">
+                            {lendError}
+                          </div>
+                        )}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleLendSubmit(book.id)}
+                            disabled={lendSubmitting}
+                            className="flex-1 bg-coral text-off-white font-semibold text-xs py-1.5 rounded-full disabled:opacity-60"
+                          >
+                            {lendSubmitting ? "Lending..." : "Confirm"}
+                          </button>
+                          <button
+                            onClick={() => setLendingId(null)}
+                            className="flex-1 border-2 border-charcoal text-ink font-semibold text-xs py-1.5 rounded-full"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => startLend(book.id)}
+                        className="mt-3 text-xs font-medium text-ink/50 hover:text-coral underline self-start"
+                      >
+                        Lend this book
+                      </button>
                     )}
                   </>
                 )}
