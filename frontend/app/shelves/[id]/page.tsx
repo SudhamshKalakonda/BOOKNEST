@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { authFetch } from "@/lib/authFetch";
+import { useWebSocket, WSMessage } from "@/lib/useWebSocket";
 import Nav from "@/components/Nav";
 
 type Book = {
@@ -25,6 +26,7 @@ export default function ShelfDetailPage() {
   const shelfId = params.id as string;
 
   const [shelf, setShelf] = useState<ShelfDetail | null>(null);
+  const [liveNotice, setLiveNotice] = useState("");
   const [myBooks, setMyBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -70,6 +72,19 @@ export default function ShelfDetailPage() {
       setLoading(false);
     }
   }, [shelfId]);
+
+  useWebSocket((msg: WSMessage) => {
+    if (
+      (msg.type === "shelf_book_added" || msg.type === "shelf_book_removed") &&
+      String(msg.shelf_id) === shelfId
+    ) {
+      const verb = msg.type === "shelf_book_added" ? "added a book" : "removed a book";
+      const who = (msg.added_by || msg.removed_by) as string;
+      setLiveNotice(`${who} ${verb}`);
+      loadShelf();
+      setTimeout(() => setLiveNotice(""), 4000);
+    }
+  });
 
   const loadMyBooks = useCallback(async () => {
     try {
@@ -212,7 +227,15 @@ export default function ShelfDetailPage() {
         </a>
 
         <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-          <h1 className="font-display font-bold text-4xl text-ink">{shelf.name}</h1>
+          <div>
+            <h1 className="font-display font-bold text-4xl text-ink">{shelf.name}</h1>
+            {liveNotice && (
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-coral bg-coral/10 rounded-full px-2.5 py-1 mt-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-coral animate-pulse" />
+                {liveNotice}
+              </span>
+            )}
+          </div>
           <div className="flex gap-2">
             <button
               onClick={() => setShowAddBook((v) => !v)}

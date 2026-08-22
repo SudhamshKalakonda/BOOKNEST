@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authFetch } from "@/lib/authFetch";
+import { useWebSocket, WSMessage } from "@/lib/useWebSocket";
 import Nav from "@/components/Nav";
 
 type ActivityItem = {
@@ -31,6 +32,24 @@ type DashboardData = {
 export default function DashboardPage() {
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
+
+  const { connected } = useWebSocket((msg: WSMessage) => {
+    if (msg.type === "activity") {
+      setData((prev) => {
+        if (!prev) return prev;
+        const newItem = {
+          id: Date.now(),
+          event_type: msg.event_type as string,
+          message: msg.message as string,
+          created_at: msg.created_at as string,
+        };
+        return {
+          ...prev,
+          recent_activity: [newItem, ...prev.recent_activity].slice(0, 10),
+        };
+      });
+    }
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -113,7 +132,15 @@ export default function DashboardPage() {
         <Nav />
 
         <h1 className="font-display font-bold text-4xl text-ink mb-1">Dashboard</h1>
-        <p className="text-ink/50 text-sm mb-8">Your reading, at a glance.</p>
+        <div className="flex items-center gap-2 mb-8">
+          <p className="text-ink/50 text-sm">Your reading, at a glance.</p>
+          {connected && (
+            <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-coral bg-coral/10 rounded-full px-2.5 py-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-coral animate-pulse" />
+              Live
+            </span>
+          )}
+        </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
           {statCards.map((stat, i) => (
