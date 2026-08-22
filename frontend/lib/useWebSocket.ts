@@ -5,7 +5,7 @@ export type WSMessage = {
   [key: string]: unknown;
 };
 
-const WS_BASE_URL = "ws://127.0.0.1:8000";
+const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://127.0.0.1:8000";
 
 export function useWebSocket(onMessage: (msg: WSMessage) => void) {
   const [connected, setConnected] = useState(false);
